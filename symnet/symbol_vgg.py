@@ -89,7 +89,6 @@ def get_vgg_top_feature(data):
     return drop7
 
 
-
 def get_vgg_train(anchor_scales, anchor_ratios, rpn_feature_stride,
                   rpn_pre_topk, rpn_post_topk, rpn_nms_thresh, rpn_min_size, rpn_batch_rois,
                   num_classes, rcnn_feature_stride, rcnn_pooled_size, rcnn_batch_size,
@@ -126,7 +125,8 @@ def get_vgg_train(anchor_scales, anchor_ratios, rpn_feature_stride,
     # rpn bbox regression
     rpn_bbox_pred = mx.symbol.Convolution(
         data=rpn_relu, kernel=(1, 1), pad=(0, 0), num_filter=4 * num_anchors, name="rpn_bbox_pred")
-    rpn_bbox_loss_ = rpn_bbox_weight * mx.symbol.smooth_l1(name='rpn_bbox_loss_', scalar=3.0, data=(rpn_bbox_pred - rpn_bbox_target))
+    rpn_bbox_loss_ = rpn_bbox_weight * mx.symbol.smooth_l1(name='rpn_bbox_loss_', scalar=3.0,
+                                                           data=(rpn_bbox_pred - rpn_bbox_target))
     rpn_bbox_loss = mx.sym.MakeLoss(name='rpn_bbox_loss', data=rpn_bbox_loss_, grad_scale=1.0 / rpn_batch_rois)
 
     # rpn proposal
@@ -148,7 +148,8 @@ def get_vgg_train(anchor_scales, anchor_ratios, rpn_feature_stride,
 
     # rcnn roi pool
     roi_pool = mx.symbol.ROIPooling(
-        name='roi_pool', data=conv_feat, rois=rois, pooled_size=rcnn_pooled_size, spatial_scale=1.0 / rcnn_feature_stride)
+        name='roi_pool', data=conv_feat, rois=rois, pooled_size=rcnn_pooled_size,
+        spatial_scale=1.0 / rcnn_feature_stride)
 
     # rcnn top feature
     top_feat = get_vgg_top_feature(roi_pool)
@@ -165,12 +166,13 @@ def get_vgg_train(anchor_scales, anchor_ratios, rpn_feature_stride,
     # reshape output
     label = mx.symbol.Reshape(data=label, shape=(rcnn_batch_size, -1), name='label_reshape')
     cls_prob = mx.symbol.Reshape(data=cls_prob, shape=(rcnn_batch_size, -1, num_classes), name='cls_prob_reshape')
-    bbox_loss = mx.symbol.Reshape(data=bbox_loss, shape=(rcnn_batch_size, -1, 4 * num_classes), name='bbox_loss_reshape')
+    bbox_loss = mx.symbol.Reshape(data=bbox_loss, shape=(rcnn_batch_size, -1, 4 * num_classes),
+                                  name='bbox_loss_reshape')
 
     # group output
     group = mx.symbol.Group([rpn_cls_prob, rpn_bbox_loss, cls_prob, bbox_loss, mx.symbol.BlockGrad(label)])
-    mx.viz.print_summary(rpn_cls_prob, shape={"data":(1, 3, 512, 512)})
-    quit()
+    mx.viz.print_summary(rpn_cls_prob, shape={"data": (1, 3, 512, 512)})
+
     return group
 
 
@@ -213,7 +215,8 @@ def get_vgg_test(anchor_scales, anchor_ratios, rpn_feature_stride,
 
     # rcnn roi pool
     roi_pool = mx.symbol.ROIPooling(
-        name='roi_pool', data=conv_feat, rois=rois, pooled_size=rcnn_pooled_size, spatial_scale=1.0 / rcnn_feature_stride)
+        name='roi_pool', data=conv_feat, rois=rois, pooled_size=rcnn_pooled_size,
+        spatial_scale=1.0 / rcnn_feature_stride)
 
     # rcnn top feature
     top_feat = get_vgg_top_feature(roi_pool)
@@ -227,7 +230,8 @@ def get_vgg_test(anchor_scales, anchor_ratios, rpn_feature_stride,
 
     # reshape output
     cls_prob = mx.symbol.Reshape(data=cls_prob, shape=(rcnn_batch_size, -1, num_classes), name='cls_prob_reshape')
-    bbox_pred = mx.symbol.Reshape(data=bbox_pred, shape=(rcnn_batch_size, -1, 4 * num_classes), name='bbox_pred_reshape')
+    bbox_pred = mx.symbol.Reshape(data=bbox_pred, shape=(rcnn_batch_size, -1, 4 * num_classes),
+                                  name='bbox_pred_reshape')
 
     # group output
     group = mx.symbol.Group([rois, cls_prob, bbox_pred])
