@@ -41,11 +41,8 @@ def train_net(sym, roidb, args):
 
     # load training data
     feat_sym = sym.get_internals()['rpn_cls_score_output']
-    ag = AnchorGenerator(feat_stride=args.rpn_feat_stride,
-                         anchor_scales=args.rpn_anchor_scales, anchor_ratios=args.rpn_anchor_ratios)
-    asp = AnchorSampler(allowed_border=args.rpn_allowed_border, batch_rois=args.rpn_batch_rois,
-                        fg_fraction=args.rpn_fg_fraction, fg_overlap=args.rpn_fg_overlap,
-                        bg_overlap=args.rpn_bg_overlap)
+    ag = AnchorGenerator(feat_stride=16, anchor_scales=args.rpn_anchor_scales, anchor_ratios=args.rpn_anchor_ratios)
+    asp = AnchorSampler(allowed_border=0, batch_rois=256, fg_fraction=0.5, fg_overlap=0.7, bg_overlap=0.3)
     train_data = AnchorLoader(roidb, batch_size, img_short_side, img_long_side,
                               args.img_pixel_means, args.img_pixel_stds, feat_sym, ag, asp, shuffle=True)
 
@@ -90,11 +87,13 @@ def train_net(sym, roidb, args):
         eval_metrics.add(child_metric)
 
     # learning schedule
-    base_lr = args.lr
+    base_lr = 0.001
     lr_factor = 0.1
-    lr_epoch = [int(epoch) for epoch in args.lr_decay_epoch.split(',')]
-    lr_epoch_diff = [epoch - args.start_epoch for epoch in lr_epoch if epoch > args.start_epoch]
-    lr = base_lr * (lr_factor ** (len(lr_epoch) - len(lr_epoch_diff)))
+    lr_epoch = [7]
+
+    lr_epoch_diff = [7]
+    lr = base_lr
+
     lr_iters = [int(epoch * len(roidb) / batch_size) for epoch in lr_epoch_diff]
     logger.info('lr %f lr_epoch_diff %s lr_iters %s' % (lr, lr_epoch_diff, lr_iters))
     lr_scheduler = mx.lr_scheduler.MultiFactorScheduler(lr_iters, lr_factor)
@@ -111,47 +110,17 @@ def train_net(sym, roidb, args):
                  fixed_param_names=fixed_param_names)
     mod.fit(train_data, eval_metric=eval_metrics, kvstore='device',
             optimizer='sgd', optimizer_params=optimizer_params,
-            arg_params=arg_params, aux_params=aux_params, begin_epoch=args.start_epoch,
+            arg_params=arg_params, aux_params=aux_params, begin_epoch=0,
             num_epoch=10)
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description='Train Faster R-CNN network',
-                                     formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('--lr', type=float, default=0.001, help='base learning rate')
-    parser.add_argument('--lr-decay-epoch', type=str, default='7', help='epoch to decay lr')
-    parser.add_argument('--resume', type=str, default='', help='path to last saved model')
-    parser.add_argument('--start-epoch', type=int, default=0, help='start epoch for resuming')
-    parser.add_argument('--save-prefix', type=str, default='', help='saving params prefix')
     # faster rcnn params
-    parser.add_argument('--img-pixel-means', type=str, default='(0.0, 0.0, 0.0)')
-    parser.add_argument('--img-pixel-stds', type=str, default='(1.0, 1.0, 1.0)')
-    parser.add_argument('--net-fixed-params', type=str, default='["conv0", "stage1", "gamma", "beta"]')
-    parser.add_argument('--rpn-feat-stride', type=int, default=16)
-    parser.add_argument('--rpn-anchor-scales', type=str, default='(8, 16, 32)')
-    parser.add_argument('--rpn-anchor-ratios', type=str, default='(0.5, 1, 2)')
-    parser.add_argument('--rpn-pre-nms-topk', type=int, default=12000)
-    parser.add_argument('--rpn-post-nms-topk', type=int, default=2000)
-    parser.add_argument('--rpn-nms-thresh', type=float, default=0.7)
-    parser.add_argument('--rpn-min-size', type=int, default=16)
-    parser.add_argument('--rpn-batch-rois', type=int, default=256)
-    parser.add_argument('--rpn-allowed-border', type=int, default=0)
-    parser.add_argument('--rpn-fg-fraction', type=float, default=0.5)
-    parser.add_argument('--rpn-fg-overlap', type=float, default=0.7)
-    parser.add_argument('--rpn-bg-overlap', type=float, default=0.3)
-    parser.add_argument('--rcnn-num-classes', type=int, default=21)
-    parser.add_argument('--rcnn-feat-stride', type=int, default=16)
-    parser.add_argument('--rcnn-batch-rois', type=int, default=128)
-    parser.add_argument('--rcnn-fg-fraction', type=float, default=0.25)
-    parser.add_argument('--rcnn-fg-overlap', type=float, default=0.5)
-    parser.add_argument('--rcnn-bbox-stds', type=str, default='(0.1, 0.1, 0.2, 0.2)')
+    parser = argparse.ArgumentParser()
     args = parser.parse_args()
-    args.img_pixel_means = ast.literal_eval(args.img_pixel_means)
-    args.img_pixel_stds = ast.literal_eval(args.img_pixel_stds)
-    args.net_fixed_params = ast.literal_eval(args.net_fixed_params)
-    args.rpn_anchor_scales = ast.literal_eval(args.rpn_anchor_scales)
-    args.rpn_anchor_ratios = ast.literal_eval(args.rpn_anchor_ratios)
-    args.rcnn_bbox_stds = ast.literal_eval(args.rcnn_bbox_stds)
+    args.rpn_anchor_scales = (8, 16, 32)
+    args.rpn_anchor_ratios = (0.5, 1, 2)
+
     return args
 
 
@@ -167,21 +136,19 @@ def get_voc(args):
 def get_vgg16_train(args):
     from symnet.symbol_vgg import get_vgg_train
     args.pretrained = 'model/vgg16-0000.params'
-    args.save_prefix = 'model/vgg16'
     args.img_pixel_means = (123.68, 116.779, 103.939)
     args.img_pixel_stds = (1.0, 1.0, 1.0)
     args.net_fixed_params = ['conv1', 'conv2']
-    args.rpn_feat_stride = 16
     args.rcnn_feat_stride = 16
     args.rcnn_pooled_size = (7, 7)
     return get_vgg_train(anchor_scales=args.rpn_anchor_scales, anchor_ratios=args.rpn_anchor_ratios,
-                         rpn_feature_stride=args.rpn_feat_stride, rpn_pre_topk=args.rpn_pre_nms_topk,
-                         rpn_post_topk=args.rpn_post_nms_topk, rpn_nms_thresh=args.rpn_nms_thresh,
-                         rpn_min_size=args.rpn_min_size, rpn_batch_rois=args.rpn_batch_rois,
+                         rpn_feature_stride=16, rpn_pre_topk=12000,
+                         rpn_post_topk=2000, rpn_nms_thresh=0.7,
+                         rpn_min_size=16, rpn_batch_rois=256,
                          num_classes=args.rcnn_num_classes, rcnn_feature_stride=args.rcnn_feat_stride,
                          rcnn_pooled_size=args.rcnn_pooled_size, rcnn_batch_size=1,
-                         rcnn_batch_rois=args.rcnn_batch_rois, rcnn_fg_fraction=args.rcnn_fg_fraction,
-                         rcnn_fg_overlap=args.rcnn_fg_overlap, rcnn_bbox_stds=args.rcnn_bbox_stds)
+                         rcnn_batch_rois=128, rcnn_fg_fraction=0.25,
+                         rcnn_fg_overlap=0.5, rcnn_bbox_stds=(0.1, 0.1, 0.2, 0.2))
 
 
 def main():
