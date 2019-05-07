@@ -171,7 +171,6 @@ def get_vgg_train(anchor_scales, anchor_ratios, rpn_feature_stride,
 
     # group output
     group = mx.symbol.Group([rpn_cls_prob, rpn_bbox_loss, cls_prob, bbox_loss, mx.symbol.BlockGrad(label)])
-    mx.viz.print_summary(rpn_cls_prob, shape={"data": (1, 3, 512, 512)})
 
     return group
 

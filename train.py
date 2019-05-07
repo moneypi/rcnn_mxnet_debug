@@ -16,14 +16,12 @@
 # under the License.
 
 import argparse
-import ast
 import pprint
 
 import mxnet as mx
 from mxnet.module import Module
 
 from symdata.loader import AnchorGenerator, AnchorSampler, AnchorLoader
-from symnet.logger import logger
 from symnet.model import load_param, infer_data_shape, check_shape, initialize_frcnn, get_fixed_params
 from symnet.metric import RPNAccMetric, RPNLogLossMetric, RPNL1LossMetric, RCNNAccMetric, RCNNLogLossMetric, \
     RCNNL1LossMetric
@@ -31,8 +29,6 @@ from symimdb.pascal_voc import PascalVOC
 
 
 def train_net(sym, roidb, args):
-    # print config
-    logger.info('called with args\n{}'.format(pprint.pformat(vars(args))))
     img_long_side = 1000
     img_short_side = 600
 
@@ -61,8 +57,7 @@ def train_net(sym, roidb, args):
 
     # print shapes
     data_shape_dict, out_shape_dict = infer_data_shape(sym, data_shapes + label_shapes)
-    logger.info('max input shape\n%s' % pprint.pformat(data_shape_dict))
-    logger.info('max output shape\n%s' % pprint.pformat(out_shape_dict))
+    mx.viz.print_summary(sym, shape=dict(data_shapes + label_shapes))
 
     # load and initialize params
     arg_params, aux_params = load_param(args.pretrained)
@@ -73,7 +68,6 @@ def train_net(sym, roidb, args):
 
     # check fixed params
     fixed_param_names = get_fixed_params(sym, args.net_fixed_params)
-    logger.info('locking params\n%s' % pprint.pformat(fixed_param_names))
 
     # metric
     rpn_eval_metric = RPNAccMetric()
@@ -91,11 +85,10 @@ def train_net(sym, roidb, args):
     lr_factor = 0.1
     lr_epoch = [7]
 
-    lr_epoch_diff = [7]
+    lr_epoch_diff = lr_epoch
     lr = base_lr
 
     lr_iters = [int(epoch * len(roidb) / batch_size) for epoch in lr_epoch_diff]
-    logger.info('lr %f lr_epoch_diff %s lr_iters %s' % (lr, lr_epoch_diff, lr_iters))
     lr_scheduler = mx.lr_scheduler.MultiFactorScheduler(lr_iters, lr_factor)
     # optimizer
     optimizer_params = {'momentum': 0.9,
