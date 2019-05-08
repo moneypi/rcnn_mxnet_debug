@@ -76,7 +76,7 @@ def clip_boxes(boxes, im_shape):
     return boxes
 
 
-def bbox_transform(ex_rois, gt_rois, box_stds):
+def bbox_transform(ex_rois, gt_rois):
     """
     compute bounding box regression targets from ex_rois to gt_rois
     :param ex_rois: [N, 4]
@@ -95,10 +95,10 @@ def bbox_transform(ex_rois, gt_rois, box_stds):
     gt_ctr_x = gt_rois[:, 0] + 0.5 * (gt_widths - 1.0)
     gt_ctr_y = gt_rois[:, 1] + 0.5 * (gt_heights - 1.0)
 
-    targets_dx = (gt_ctr_x - ex_ctr_x) / (ex_widths + 1e-14) / box_stds[0]
-    targets_dy = (gt_ctr_y - ex_ctr_y) / (ex_heights + 1e-14) / box_stds[1]
-    targets_dw = np.log(gt_widths / ex_widths) / box_stds[2]
-    targets_dh = np.log(gt_heights / ex_heights) / box_stds[3]
+    targets_dx = (gt_ctr_x - ex_ctr_x) / (ex_widths + 1e-14)
+    targets_dy = (gt_ctr_y - ex_ctr_y) / (ex_heights + 1e-14)
+    targets_dw = np.log(gt_widths / ex_widths)
+    targets_dh = np.log(gt_heights / ex_heights)
 
     targets = np.vstack((targets_dx, targets_dy, targets_dw, targets_dh)).transpose()
     return targets

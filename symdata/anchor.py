@@ -124,12 +124,18 @@ class AnchorSampler:
                                (anchors[:, 3] < im_height))[0]
         anchors = anchors[inds_inside, :]
 
-        for anchor in anchors:
-            tmp = img.copy()
-            cv2.rectangle(tmp, (int(anchor[0]), int(anchor[1])), (int(anchor[2]), int(anchor[3])),
-                          (255, 0, 0), 1)
-            cv2.imshow("tmp", tmp)
-            cv2.waitKey(10)
+        # for anchor in anchors:
+        #     tmp = img.copy()
+        #     cv2.rectangle(tmp, (int(anchor[0]), int(anchor[1])), (int(anchor[2]), int(anchor[3])),
+        #                   (255, 0, 0), 1)
+        #     cv2.imshow("tmp", tmp)
+        #     cv2.waitKey(10)
+
+        # for gt_box in gt_boxes:
+        #     cv2.rectangle(img, (int(gt_box[0]), int(gt_box[1])), (int(gt_box[2]), int(gt_box[3])),
+        #                   (255, 0, 0), 1)
+        #     cv2.imshow("tmp", img)
+        #     cv2.waitKey(200)
 
         num_valid = len(inds_inside)
 
@@ -164,8 +170,15 @@ class AnchorSampler:
 
             # assign to argmax overlap
             argmax_overlaps = overlaps.argmax(axis=1)
-            bbox_targets[fg_inds, :] = bbox_transform(anchors[fg_inds, :], gt_boxes[argmax_overlaps[fg_inds], :],
-                                                      box_stds=(1.0, 1.0, 1.0, 1.0))
+
+            # for anchor in anchors[bg_inds, :]:
+            #     tmp = img.copy()
+            #     cv2.rectangle(tmp, (int(anchor[0]), int(anchor[1])), (int(anchor[2]), int(anchor[3])),
+            #                   (255, 0, 0), 1)
+            #     cv2.imshow("tmp2", tmp)
+            #     cv2.waitKey(200)
+
+            bbox_targets[fg_inds, :] = bbox_transform(anchors[fg_inds, :], gt_boxes[argmax_overlaps[fg_inds], :])
 
             # only fg anchors has bbox_targets
             bbox_weights[fg_inds, :] = 1
