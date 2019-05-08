@@ -16,6 +16,7 @@
 # under the License.
 
 import numpy as np
+import cv2
 from symdata.bbox import bbox_overlaps, bbox_transform
 
 
@@ -103,14 +104,13 @@ class AnchorGenerator:
 
 
 class AnchorSampler:
-    def __init__(self, allowed_border=0, batch_rois=256, fg_fraction=0.5, fg_overlap=0.7, bg_overlap=0.3):
-        self._allowed_border = allowed_border
+    def __init__(self, batch_rois=256, fg_fraction=0.5, fg_overlap=0.7, bg_overlap=0.3):
         self._num_batch = batch_rois
         self._num_fg = int(batch_rois * fg_fraction)
         self._fg_overlap = fg_overlap
         self._bg_overlap = bg_overlap
 
-    def assign(self, anchors, gt_boxes, im_height, im_width):
+    def assign(self, img, anchors, gt_boxes, im_height, im_width):
         num_anchors = anchors.shape[0]
 
         # filter out padded gt_boxes
@@ -118,11 +118,19 @@ class AnchorSampler:
         gt_boxes = gt_boxes[valid_labels]
 
         # filter out anchors outside the region
-        inds_inside = np.where((anchors[:, 0] >= -self._allowed_border) &
-                               (anchors[:, 2] < im_width + self._allowed_border) &
-                               (anchors[:, 1] >= -self._allowed_border) &
-                               (anchors[:, 3] < im_height + self._allowed_border))[0]
+        inds_inside = np.where((anchors[:, 0] >= 0) &
+                               (anchors[:, 2] < im_width) &
+                               (anchors[:, 1] >= 0) &
+                               (anchors[:, 3] < im_height))[0]
         anchors = anchors[inds_inside, :]
+
+        for anchor in anchors:
+            tmp = img.copy()
+            cv2.rectangle(tmp, (int(anchor[0]), int(anchor[1])), (int(anchor[2]), int(anchor[3])),
+                          (255, 0, 0), 1)
+            cv2.imshow("tmp", tmp)
+            cv2.waitKey(10)
+
         num_valid = len(inds_inside)
 
         # label: 1 is positive, 0 is negative, -1 is dont care

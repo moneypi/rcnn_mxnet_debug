@@ -46,7 +46,7 @@ def get_image(roi_rec, short, max_size, mean, std):
     else:
         gt_boxes = np.empty((0, 5), dtype=np.float32)
 
-    return im_tensor, im_info, gt_boxes
+    return im, im_tensor, im_info, gt_boxes
 
 
 def imdecode(image_path):

@@ -190,10 +190,12 @@ class AnchorLoader(mx.io.DataIter):
 
     def getdata(self):
         indices = self.getindex()
-        im_tensor, im_info, gt_boxes = [], [], []
+        ims, im_tensor, im_info, gt_boxes = [], [], [], []
         for index in indices:
             roi_rec = self._roidb[index]
-            b_im_tensor, b_im_info, b_gt_boxes = get_image(roi_rec, self._short, self._max_size, self._mean, self._std)
+            im, b_im_tensor, b_im_info, b_gt_boxes = get_image(roi_rec, self._short, self._max_size, self._mean,
+                                                               self._std)
+            ims.append(im)
             im_tensor.append(b_im_tensor)
             im_info.append(b_im_info)
             gt_boxes.append(b_gt_boxes)
@@ -201,6 +203,7 @@ class AnchorLoader(mx.io.DataIter):
         im_info = mx.nd.array(tensor_vstack(im_info, pad=0))
         gt_boxes = mx.nd.array(tensor_vstack(gt_boxes, pad=-1))
         self._data = im_tensor, im_info, gt_boxes
+        self.imgs = ims
         return self._data
 
     def getlabel(self):
@@ -218,7 +221,8 @@ class AnchorLoader(mx.io.DataIter):
             b_gt_boxes = gt_boxes[batch_ind].asnumpy()
             b_im_height, b_im_width = b_im_info[:2]
 
-            b_label, b_bbox_target, b_bbox_weight = self._as.assign(anchors, b_gt_boxes, b_im_height, b_im_width)
+            b_label, b_bbox_target, b_bbox_weight = self._as.assign(self.imgs[batch_ind], anchors, b_gt_boxes,
+                                                                    b_im_height, b_im_width)
 
             b_label = b_label.reshape((feat_height, feat_width, -1)).transpose((2, 0, 1)).flatten()
             b_bbox_target = b_bbox_target.reshape((feat_height, feat_width, -1)).transpose((2, 0, 1))

@@ -16,7 +16,6 @@
 # under the License.
 
 import argparse
-import pprint
 
 import mxnet as mx
 from mxnet.module import Module
@@ -38,7 +37,7 @@ def train_net(sym, roidb, args):
     # load training data
     feat_sym = sym.get_internals()['rpn_cls_score_output']
     ag = AnchorGenerator(feat_stride=16, anchor_scales=args.rpn_anchor_scales, anchor_ratios=args.rpn_anchor_ratios)
-    asp = AnchorSampler(allowed_border=0, batch_rois=256, fg_fraction=0.5, fg_overlap=0.7, bg_overlap=0.3)
+    asp = AnchorSampler(batch_rois=256, fg_fraction=0.5, fg_overlap=0.7, bg_overlap=0.3)
     train_data = AnchorLoader(roidb, batch_size, img_short_side, img_long_side,
                               args.img_pixel_means, args.img_pixel_stds, feat_sym, ag, asp, shuffle=True)
 
@@ -70,15 +69,13 @@ def train_net(sym, roidb, args):
     fixed_param_names = get_fixed_params(sym, args.net_fixed_params)
 
     # metric
-    rpn_eval_metric = RPNAccMetric()
-    rpn_cls_metric = RPNLogLossMetric()
-    rpn_bbox_metric = RPNL1LossMetric()
-    eval_metric = RCNNAccMetric()
-    cls_metric = RCNNLogLossMetric()
-    bbox_metric = RCNNL1LossMetric()
     eval_metrics = mx.metric.CompositeEvalMetric()
-    for child_metric in [rpn_eval_metric, rpn_cls_metric, rpn_bbox_metric, eval_metric, cls_metric, bbox_metric]:
-        eval_metrics.add(child_metric)
+    eval_metrics.add(RPNAccMetric())
+    eval_metrics.add(RPNLogLossMetric())
+    eval_metrics.add(RPNL1LossMetric())
+    eval_metrics.add(RCNNAccMetric())
+    eval_metrics.add(RCNNLogLossMetric())
+    eval_metrics.add(RCNNL1LossMetric())
 
     # learning schedule
     base_lr = 0.001
